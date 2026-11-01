@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}MiRen Public View Monitor{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet"
+      href="{{ url_for('static', filename='css/display.css') }}">
+{% endblock %}
+
+{% block content %}
+<main class="display-page">
+
+    <header class="header">
+        <div class="brand">
+
+            <img
+                id="store-logo"
+                class="store-logo hidden"
+                src=""
+                alt="Store logo">
+
+            <div id="default-brand" class="brand">
+                <span class="brand-name">MiRen Monitor</span>
+                <span class="brand-powered">
+                    POWERED BY SUNTECH
+                </span>
+            </div>
+
+        </div>
+
+        <div id="live-indicator"
+             class="live-indicator hidden">
+            <span class="live-dot"></span>
+            LIVE
+        </div>
+    </header>
+
+    <section class="video-container">
+
+        <!-- Existing simulator video -->
+        <video
+            id="camera-video"
+            autoplay
+            muted
+            loop
+            playsinline
+            preload="auto">
+
+            <source
+                src="{{ url_for('static',
+                    filename='videos/camera-demo.mp4') }}"
+                type="video/mp4">
+        </video>
+
+        <!-- Actual RTSP feed delivered by Flask -->
+        <img
+            id="camera-feed"
+            class="hidden"
+            alt="Live camera feed">
+
+        <div id="offline-screen" class="offline hidden">
+            <div class="offline-content">
+                <div class="offline-icon">!</div>
+
+                <h1>Camera Unavailable</h1>
+
+                <p>Waiting for the camera connection...</p>
+
+                <span class="offline-subtitle">
+                    The system will retry automatically.
+                </span>
+            </div>
+        </div>
+
+    </section>
+
+    <footer class="footer">
+        <span class="surveillance-icon">●</span>
+
+        <span id="surveillance-notice">
+            VIDEO SURVEILLANCE IN PROGRESS
+        </span>
+    </footer>
+
+    <div class="copyright">
+        MiRen Public View Monitor · Powered by Suntech
+    </div>
+
+</main>
+{% endblock %}
+
+{% block page_js %}
+<script src="{{ url_for('static',
+    filename='js/display.js') }}?v=2"></script>
+{% endblock %}

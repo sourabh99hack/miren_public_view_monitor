@@ -1,0 +1,206 @@
+.display-page {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 320px;
+    overflow: hidden;
+    background: #03070d;
+    color: #fff;
+}
+
+.header {
+    position: absolute;
+    z-index: 10;
+    top: 0;
+    left: 0;
+    width: 100%;
+    min-height: clamp(68px, 7.5vh, 150px);
+    padding: clamp(14px, 2.2vw, 42px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    background: linear-gradient(to bottom,
+            rgba(0, 0, 0, 0.82),
+            rgba(0, 0, 0, 0));
+}
+
+.store-logo {
+    display: block;
+    width: auto;
+    max-width: min(35vw, 450px);
+    max-height: clamp(60px, 11vh, 130px);
+    object-fit: contain;
+}
+
+
+#camera-feed {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.brand {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    text-shadow: 0 2px 10px #000;
+}
+
+.brand-name {
+    font-size: clamp(24px, 2.1vw, 48px);
+    font-weight: 800;
+    letter-spacing: -0.04em;
+}
+
+.brand-powered {
+    color: #9ecbff;
+    font-size: clamp(9px, 0.72vw, 16px);
+    font-weight: 700;
+    letter-spacing: 0.2em;
+}
+
+.video-container {
+    position: absolute;
+    inset: 0;
+    background: #03070d;
+}
+
+#camera-video {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+    background: #03070d;
+}
+
+.live-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: clamp(8px, 0.9vw, 18px) clamp(12px, 1.4vw, 28px);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.55);
+    font-size: clamp(11px, 0.9vw, 20px);
+    font-weight: 800;
+    letter-spacing: 0.1em;
+}
+
+.live-dot {
+    width: clamp(8px, 0.65vw, 15px);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: #25df8b;
+    box-shadow: 0 0 12px rgba(37, 223, 139, 0.9);
+}
+
+.footer {
+    position: absolute;
+    z-index: 6;
+    bottom: clamp(18px, 3vh, 60px);
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    width: max-content;
+    max-width: calc(100% - 32px);
+    padding: clamp(12px, 1.3vw, 26px) clamp(18px, 2vw, 40px);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.72);
+    color: #fff;
+    font-size: clamp(11px, 1vw, 24px);
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-align: center;
+}
+
+.surveillance-icon {
+    color: #ff4545;
+    font-size: 0.9em;
+    text-shadow: 0 0 12px rgba(255, 69, 69, 0.8);
+}
+
+.copyright {
+    position: absolute;
+    z-index: 10;
+    right: clamp(14px, 2vw, 40px);
+    bottom: clamp(8px, 1.2vh, 24px);
+    color: rgba(255, 255, 255, 0.95);
+    font-size: clamp(18px, 1.25vw, 28px);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    line-height: 1.4;
+    text-shadow: 0 1px 5px #000;
+}
+
+.offline {
+    position: absolute;
+    z-index: 5;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: radial-gradient(circle at center, #17263b, #03070d 75%);
+    text-align: center;
+}
+
+.offline-content {
+    width: min(900px, 100%);
+}
+
+.offline-icon {
+    display: grid;
+    place-items: center;
+    width: clamp(54px, 5vw, 100px);
+    aspect-ratio: 1;
+    margin: 0 auto 24px;
+    border: 2px solid #ff7777;
+    border-radius: 50%;
+    color: #ff7777;
+    font-size: clamp(28px, 3vw, 60px);
+    font-weight: 800;
+}
+
+.offline h1 {
+    margin: 0 0 14px;
+    font-size: clamp(28px, 3vw, 68px);
+}
+
+.offline p {
+    margin: 0 0 14px;
+    color: #cbd7e7;
+    font-size: clamp(16px, 1.4vw, 32px);
+}
+
+.offline-subtitle {
+    color: #8ea4bf;
+    font-size: clamp(12px, 1vw, 22px);
+}
+
+@media (max-width: 600px) {
+    .header {
+        align-items: flex-start;
+    }
+
+    .footer {
+        bottom: 38px;
+        letter-spacing: 0.06em;
+    }
+
+    .copyright {
+        right: 0;
+        bottom: 10px;
+        width: 100%;
+        text-align: center;
+    }
+}

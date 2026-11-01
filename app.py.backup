@@ -1,0 +1,467 @@
+import os
+import json
+from datetime import timedelta
+from functools import wraps
+from pathlib import Path
+
+from dotenv import load_dotenv
+from flask import (
+    Flask,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    session,
+    flash,
+    jsonify,
+)
+from flask_wtf.csrf import CSRFProtect
+from werkzeug.security import check_password_hash, generate_password_hash
+from werkzeug.utils import secure_filename
+
+load_dotenv()
+
+app = Flask(__name__)
+
+secret_key = os.getenv("MIREN_SECRET_KEY")
+admin_password = os.getenv("MIREN_ADMIN_PASSWORD")
+
+if not secret_key or not admin_password:
+    raise RuntimeError(
+        "Set MIREN_SECRET_KEY and MIREN_ADMIN_PASSWORD in your .env file."
+    )
+
+app.config.update(
+    SECRET_KEY=secret_key,
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=os.getenv(
+        "MIREN_HTTPS", "false"
+    ).lower() == "true",
+    PERMANENT_SESSION_LIFETIME=timedelta(minutes=30),
+    MAX_CONTENT_LENGTH=3 * 1024 * 1024,
+)
+
+csrf = CSRFProtect(app)
+ADMIN_PASSWORD_HASH = generate_password_hash(admin_password)
+
+BASE_DIR = Path(__file__).resolve().parent
+STATE_FILE = BASE_DIR / "data" / "camera_state.json"
+CONFIG_FILE = BASE_DIR / "data" / "camera_config.json"
+UPLOAD_DIR = BASE_DIR / "static" / "uploads"
+
+ALLOWED_LOGO_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
+
+DEFAULT_CAMERA_CONFIG = {
+    "camera_name": "Entrance",
+    "camera_host": "",
+    "rtsp_port": 554,
+    "username": "",
+    "password": "",
+    "stream": "main",
+    "custom_rtsp_url": "",
+    "logo_path": "",
+    "notice_text": "VIDEO SURVEILLANCE IN PROGRESS",
+}
+
+
+def load_camera_config():
+    try:
+        with CONFIG_FILE.open("r", encoding="utf-8") as file:
+            saved = json.load(file)
+
+        if isinstance(saved, dict):
+            config = DEFAULT_CAMERA_CONFIG.copy()
+            config.update({
+                key: saved[key]
+                for key in config
+                if key in saved
+            })
+            return config
+
+    except FileNotFoundError:
+        pass
+    except (OSError, json.JSONDecodeError):
+        app.logger.exception("Unable to load camera configuration.")
+
+    return DEFAULT_CAMERA_CONFIG.copy()
+
+
+def save_camera_config(config):
+    CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    temp_file = CONFIG_FILE.with_suffix(".tmp")
+
+    with temp_file.open("w", encoding="utf-8") as file:
+        json.dump(config, file, indent=2)
+        file.flush()
+        os.fsync(file.fileno())
+
+    try:
+        os.chmod(temp_file, 0o600)
+    except OSError:
+        app.logger.warning(
+            "Could not restrict camera configuration file permissions."
+        )
+
+    temp_file.replace(CONFIG_FILE)
+
+    try:
+        os.chmod(CONFIG_FILE, 0o600)
+    except OSError:
+        app.logger.warning(
+            "Could not restrict camera configuration file permissions."
+        )
+
+
+camera_config = load_camera_config()
+
+
+def load_camera_state():
+    try:
+        with STATE_FILE.open("r", encoding="utf-8") as file:
+            state = json.load(file)
+
+        if (
+            isinstance(state, dict)
+            and isinstance(state.get("connected"), bool)
+        ):
+            app.logger.info(
+                "Loaded simulator state: connected=%s",
+                state["connected"],
+            )
+            return {"connected": state["connected"]}
+
+        app.logger.warning("Invalid simulator state file: %s", STATE_FILE)
+
+    except FileNotFoundError:
+        app.logger.warning("Simulator state file not found: %s", STATE_FILE)
+    except (OSError, json.JSONDecodeError):
+        app.logger.exception("Could not load simulator state.")
+
+    return {"connected": True}
+
+
+def save_camera_state(state):
+    STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    temp_file = STATE_FILE.with_suffix(".tmp")
+
+    with temp_file.open("w", encoding="utf-8") as file:
+        json.dump(state, file, indent=2)
+        file.flush()
+        os.fsync(file.fileno())
+
+    temp_file.replace(STATE_FILE)
+
+
+camera_state = load_camera_state()
+
+if not STATE_FILE.exists():
+    save_camera_state(camera_state)
+
+
+def login_required(view):
+    @wraps(view)
+    def wrapped_view(*args, **kwargs):
+        if not session.get("admin_logged_in"):
+            return redirect(url_for("login"))
+        return view(*args, **kwargs)
+
+    return wrapped_view
+
+
+def config_for_browser():
+    """Return configuration without exposing the saved password."""
+    safe_config = camera_config.copy()
+    safe_config["password_configured"] = bool(
+        safe_config.pop("password", "")
+    )
+    return safe_config
+
+
+@app.route("/")
+def display():
+    return render_template("display.html")
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if session.get("admin_logged_in"):
+        return redirect(url_for("admin"))
+
+    if request.method == "POST":
+        password = request.form.get("password", "")
+
+        if check_password_hash(ADMIN_PASSWORD_HASH, password):
+            session.clear()
+            session["admin_logged_in"] = True
+            session.permanent = True
+            return redirect(url_for("admin"))
+
+        flash("Invalid password. Please try again.", "error")
+
+    return render_template("login.html")
+
+
+@app.route("/logout", methods=["POST"])
+@login_required
+def logout():
+    session.clear()
+    flash("You have been signed out.", "success")
+    return redirect(url_for("login"))
+
+
+@app.route("/admin")
+@login_required
+def admin():
+    return render_template("admin.html")
+
+
+@app.route("/health")
+def health():
+    response = jsonify({
+        "status": "ok",
+        "service": "MiRen Monitor",
+    })
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@app.route("/api/public-status", methods=["GET"])
+def public_camera_status():
+    # Only expose the minimum information needed by the public display.
+    response = jsonify({
+        "connected": camera_state["connected"],
+    })
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@app.route("/api/admin/camera-status", methods=["GET"])
+@login_required
+def admin_camera_status():
+    response = jsonify({
+        "connected": camera_state["connected"],
+        "mode": "simulator",
+        "state_file": str(STATE_FILE),
+    })
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@app.route("/api/simulator", methods=["POST"])
+@login_required
+def simulator_control():
+    data = request.get_json(silent=True)
+
+    if not isinstance(data, dict):
+        return jsonify({
+            "error": "A JSON request body is required."
+        }), 400
+
+    connected = data.get("connected")
+
+    if not isinstance(connected, bool):
+        return jsonify({
+            "error": "'connected' must be true or false."
+        }), 400
+
+    previous_state = camera_state["connected"]
+    camera_state["connected"] = connected
+
+    try:
+        save_camera_state(camera_state)
+    except OSError:
+        camera_state["connected"] = previous_state
+        app.logger.exception("Failed to persist simulator state.")
+        return jsonify({
+            "error": "Could not save simulator state."
+        }), 500
+
+    return jsonify({
+        "connected": camera_state["connected"],
+        "mode": "simulator",
+    }), 200
+
+
+@app.route("/api/admin/camera-config", methods=["GET"])
+@login_required
+def get_camera_config():
+    response = jsonify(config_for_browser())
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@app.route("/api/admin/camera-config", methods=["POST"])
+@login_required
+def update_camera_config():
+    global camera_config
+
+    data = request.form if request.form else (
+        request.get_json(silent=True) or {}
+    )
+
+    if not hasattr(data, "get"):
+        return jsonify({
+            "error": "A valid configuration payload is required."
+        }), 400
+
+    name = str(data.get("camera_name", "Entrance")).strip()
+    host = str(data.get("camera_host", "")).strip()
+    username = str(data.get("username", "")).strip()
+    password = str(data.get("password", ""))
+    custom_url = str(data.get("custom_rtsp_url", "")).strip()
+    stream = str(data.get("stream", "main")).strip().lower()
+    notice = str(
+        data.get(
+            "notice_text",
+            "VIDEO SURVEILLANCE IN PROGRESS",
+        )
+    ).strip()
+
+    try:
+        port = int(data.get("rtsp_port", 554))
+    except (TypeError, ValueError):
+        return jsonify({
+            "error": "RTSP port must be a number between 1 and 65535."
+        }), 400
+
+    if not name or len(name) > 80:
+        return jsonify({
+            "error": "Camera name is required and must be 80 characters or fewer."
+        }), 400
+
+    if not 1 <= port <= 65535:
+        return jsonify({
+            "error": "RTSP port must be between 1 and 65535."
+        }), 400
+
+    if stream not in {"main", "sub"}:
+        return jsonify({
+            "error": "Stream must be Main stream or Substream."
+        }), 400
+
+    if (
+        len(host) > 255
+        or len(username) > 128
+        or len(notice) > 200
+        or len(custom_url) > 2048
+    ):
+        return jsonify({
+            "error": "One or more fields exceed the allowed length."
+        }), 400
+
+    if custom_url and not custom_url.lower().startswith(
+        ("rtsp://", "rtsps://")
+    ):
+        return jsonify({
+            "error": "Custom stream URL must begin with rtsp:// or rtsps://."
+        }), 400
+
+    new_config = camera_config.copy()
+    new_config.update({
+        "camera_name": name,
+        "camera_host": host,
+        "rtsp_port": port,
+        "username": username,
+        "stream": stream,
+        "custom_rtsp_url": custom_url,
+        "notice_text": notice or "VIDEO SURVEILLANCE IN PROGRESS",
+    })
+
+    # An empty password field keeps the previously saved password.
+    if password:
+        new_config["password"] = password
+
+    upload = request.files.get("logo")
+
+    if upload and upload.filename:
+        original_name = secure_filename(upload.filename)
+        extension = (
+            original_name.rsplit(".", 1)[-1].lower()
+            if "." in original_name
+            else ""
+        )
+
+        if extension not in ALLOWED_LOGO_EXTENSIONS:
+            return jsonify({
+                "error": "Logo must be PNG, JPG, JPEG, or WebP."
+            }), 400
+
+        UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+        # Use a fixed filename to avoid trusting uploaded paths.
+        logo_name = "store-logo." + extension
+        upload_path = UPLOAD_DIR / logo_name
+
+        upload.save(upload_path)
+
+        try:
+            os.chmod(upload_path, 0o644)
+        except OSError:
+            pass
+
+        new_config["logo_path"] = "/static/uploads/" + logo_name
+
+    remove_logo = data.get("remove_logo") in ("true", "1", True)
+
+    if remove_logo:
+        old_logo = new_config.get("logo_path", "")
+
+        if old_logo.startswith("/static/uploads/"):
+            old_path = BASE_DIR / old_logo.lstrip("/")
+
+            try:
+                old_path.unlink(missing_ok=True)
+            except OSError:
+                app.logger.warning("Could not remove the previous logo file.")
+
+        new_config["logo_path"] = ""
+
+    try:
+        save_camera_config(new_config)
+    except OSError:
+        app.logger.exception("Failed to persist camera configuration.")
+        return jsonify({
+            "error": "Could not save camera configuration."
+        }), 500
+
+    camera_config = new_config
+
+    response = jsonify({
+        "success": True,
+        "message": (
+            "Configuration saved. A physical camera connection "
+            "has not been tested."
+        ),
+        "camera_name": camera_config["camera_name"],
+        "logo_path": camera_config["logo_path"],
+        "password_configured": bool(camera_config.get("password")),
+        "mode": "simulator",
+    })
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@app.route("/api/admin/test-connection", methods=["POST"])
+@login_required
+def test_camera_connection():
+    # This tests only the simulator state, not a real RTSP connection.
+    connected = bool(camera_state["connected"])
+
+    return jsonify({
+        "success": connected,
+        "mode": "simulator",
+        "connected": connected,
+        "message": (
+            "Simulator test passed: the simulated camera is marked connected."
+            if connected
+            else
+            "Simulator test failed: the simulated camera is marked disconnected."
+        ),
+        "physical_camera_tested": False,
+    }), 200
+
+
+if __name__ == "__main__":
+    # Local development only. Use a production WSGI server for deployment.
+    app.run(host="127.0.0.1", port=8080, debug=True)

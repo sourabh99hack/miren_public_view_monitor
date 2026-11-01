@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Login | MiRen Public View Monitor{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet"
+      href="{{ url_for('static', filename='css/login.css') }}">
+{% endblock %}
+
+{% block content %}
+<main class="login-page">
+    <section class="login-card">
+
+        <div class="login-brand">
+            <span class="brand-name">MiRen Public View Monitor</span>
+            <span class="brand-powered">POWERED BY SUNTECH</span>
+        </div>
+
+        <h1>Administrator Login</h1>
+        <p class="login-description">
+            Sign in to configure your public view monitor.
+        </p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash-message {{ category }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('login') }}">
+            <input type="hidden" name="csrf_token"
+                   value="{{ csrf_token() }}">
+
+            <label for="password">Administrator Password</label>
+            <input
+                type="password"
+                id="password"
+                name="password"
+                placeholder="Enter your password"
+                autocomplete="current-password"
+                required
+                autofocus
+            >
+
+            <button type="submit">Sign In</button>
+        </form>
+
+        <a class="back-link" href="{{ url_for('display') }}">
+            Back to public display
+        </a>
+
+        <p class="login-copyright">
+            MiRen Public View Monitor · Powered by Suntech
+        </p>
+
+    </section>
+</main>
+{% endblock %}
+
+{% block page_js %}
+<script src="{{ url_for('static', filename='js/login.js') }}"></script>
+{% endblock %}

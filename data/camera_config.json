@@ -1,0 +1,13 @@
+{
+  "camera_name": "Entrance",
+  "camera_host": "127.0.0.1",
+  "rtsp_port": 8554,
+  "username": "admin",
+  "password": "admin123",
+  "stream": "main",
+  "custom_rtsp_url": "",
+  "logo_path": "/static/uploads/store-logo.png",
+  "notice_text": "Recording mode",
+  "rtsp_autoconnect": true,
+  "connection_mode": "main"
+}

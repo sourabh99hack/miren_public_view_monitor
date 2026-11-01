@@ -1,0 +1,406 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard | MiRen Public View Monitor{% endblock %}
+
+{% block page_css %}
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+{% endblock %}
+
+{% block content %}
+<main class="admin-container">
+
+    <header class="admin-header">
+        <div>
+            <h1>MiRen Public View Monitor - Admin Dashboard</h1>
+            <p>Camera monitoring and system configuration</p>
+        </div>
+
+        <div class="admin-header-actions">
+            <a href="/" class="admin-btn secondary-btn">View Display</a>
+
+            <form action="{{ url_for('logout') }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="admin-btn danger-btn">Logout</button>
+            </form>
+        </div>
+    </header>
+
+    <!-- Dashboard overview -->
+    <section class="admin-dashboard-grid">
+
+        <article class="admin-card">
+            <h2>Camera Status</h2>
+
+            <div class="status-row">
+                <span id="camera-status-indicator" class="status-indicator"></span>
+                <strong id="camera-status-text">Checking status...</strong>
+            </div>
+
+            <p id="camera-status-description">
+                Checking the simulator connection.
+            </p>
+
+            <div class="admin-card-actions">
+                <button
+                    type="button"
+                    id="connect-camera-btn"
+                    class="admin-btn primary-btn">
+                    Connect
+                </button>
+
+                <button
+                    type="button"
+                    id="disconnect-camera-btn"
+                    class="admin-btn secondary-btn">
+                    Disconnect
+                </button>
+            </div>
+
+            <button
+                type="button"
+                id="open-camera-status-btn"
+                class="text-btn">
+                View camera status
+            </button>
+        </article>
+
+        <article class="admin-card">
+            <h2>System Health</h2>
+
+            <div class="status-row">
+                <span id="system-health-indicator" class="status-indicator"></span>
+                <strong id="system-health-text">Checking health...</strong>
+            </div>
+
+            <p>Application and API health information.</p>
+
+            <button
+                type="button"
+                id="open-system-health-btn"
+                class="admin-btn secondary-btn">
+                View system health
+            </button>
+        </article>
+
+        <article class="admin-card">
+            <h2>Camera Configuration</h2>
+
+            <p>
+                Configure camera details, RTSP settings, branding and the
+                display notice.
+            </p>
+
+            <button
+                type="button"
+                class="admin-btn primary-btn"
+                id="scroll-to-camera-settings-btn">
+                Configure Camera
+            </button>
+        </article>
+
+    </section>
+
+    <!-- Camera settings -->
+    <section class="admin-section" id="camera-settings-section">
+
+        <div class="section-heading">
+            <div>
+                <h2>Camera Settings</h2>
+                <p>
+                    Save your configuration now. Physical camera testing will
+                    be added after simulator testing.
+                </p>
+            </div>
+
+            <span class="environment-badge">CAMERA CONFIGURATION</span>
+        </div>
+
+        <form id="camera-settings-form" enctype="multipart/form-data" novalidate>
+
+            <!-- General settings -->
+            <div class="settings-panel">
+                <h3>General Settings</h3>
+
+                <div class="settings-grid">
+                    <div class="form-group full-width">
+    <label for="connection_mode">RTSP Connection Mode</label>
+
+    <select id="connection_mode" name="connection_mode">
+        <option value="main">Main Stream</option>
+        <option value="sub">Substream</option>
+        <option value="custom">Custom RTSP URL</option>
+    </select>
+
+    <small>
+        Select Main Stream, Substream, or provide a custom RTSP URL.
+    </small>
+</div>
+
+                    <div class="form-group">
+                        <label for="camera_name">Camera Name</label>
+                        <input
+                            type="text"
+                            id="camera_name"
+                            name="camera_name"
+                            placeholder="e.g. Entrance Camera"
+                            maxlength="100"
+                            required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="camera_host">Camera IP Address / Hostname</label>
+                        <input
+                            type="text"
+                            id="camera_host"
+                            name="camera_host"
+                            placeholder="e.g. 192.168.1.108">
+                        <small>
+                            Leave blank while testing without a physical camera.
+                        </small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="rtsp_port">RTSP Port</label>
+                        <input
+                            placeholder="e.g. 554"
+                            type="number"
+                            id="rtsp_port"
+                            name="rtsp_port"
+                            min="1"
+                            max="65535"
+                            value="554"
+                            required>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- RTSP settings -->
+            <div class="settings-panel">
+                <h3>RTSP Connection</h3>
+
+                <div class="settings-grid">
+
+                    <div class="form-group">
+                        <label for="username">Camera Username</label>
+                        <input
+                            type="text"
+                            id="username"
+                            name="username"
+                            autocomplete="off"
+                            placeholder="Camera username">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">Camera Password</label>
+                        <input
+                            type="password"
+                            id="password"
+                            name="password"
+                            autocomplete="new-password"
+                            placeholder="Leave blank to keep saved password">
+
+                        <small id="password-configured-message">
+                            No saved password information loaded yet.
+                        </small>
+                    </div>
+
+                    <div class="form-group full-width" id="custom-rtsp-group">
+    <label for="custom_rtsp_url">
+        Custom RTSP URL
+    </label>
+
+    <input
+        type="text"
+        id="custom_rtsp_url"
+        name="custom_rtsp_url"
+        placeholder="rtsp://192.168.1.100:554/stream"
+        autocomplete="off"
+        spellcheck="false"
+        disabled>
+
+    <small id="custom-rtsp-help">
+        Select Custom RTSP URL mode to enter a complete RTSP address.
+        Credentials will be extracted and handled separately.
+    </small>
+</div>
+
+                </div>
+            </div>
+
+            <!-- Branding -->
+            <div class="settings-panel">
+                <h3>Display Branding</h3>
+
+                <div class="form-group">
+                    <label for="logo">Upload Logo</label>
+                    <input
+                        type="file"
+                        id="logo"
+                        name="logo"
+                        accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp">
+
+                    <small>
+                        Supported formats: PNG, JPG, JPEG and WebP.
+                        Maximum size: 3 MB.
+                    </small>
+                </div>
+
+                <div
+                    id="camera-logo-preview-container"
+                    class="logo-preview-container"
+                    hidden>
+
+                    <p>Current logo</p>
+
+                    <img
+                        id="camera-logo-preview"
+                        src=""
+                        alt="Current camera display logo">
+
+                    <label class="checkbox-label" for="remove_logo">
+                        <input
+                            type="checkbox"
+                            id="remove_logo"
+                            name="remove_logo"
+                            value="true">
+                        Remove current logo when saving
+                    </label>
+                </div>
+            </div>
+
+            <!-- Display notice -->
+            <div class="settings-panel">
+                <h3>Display Notice</h3>
+
+                <div class="form-group">
+                    <label for="notice_text">Notice Message</label>
+                    <textarea
+                        id="notice_text"
+                        name="notice_text"
+                        rows="4"
+                        maxlength="1000"
+                        placeholder="Enter the message displayed on the public screen"></textarea>
+
+                    <small>
+                        This setting is saved for the public display integration.
+                    </small>
+                </div>
+            </div>
+
+            <!-- Feedback -->
+            <div
+                id="camera-settings-message"
+                class="settings-message"
+                role="status"
+                aria-live="polite"
+                hidden>
+            </div>
+
+            <!-- Actions -->
+            <div class="settings-actions">
+                <button
+                    type="submit"
+                    id="save-camera-settings-btn"
+                    class="admin-btn primary-btn">
+                    Save Settings
+                </button>
+
+                <button
+                    type="button"
+                    id="test-camera-connection-btn"
+                    class="admin-btn secondary-btn">
+                    Test Connection
+                </button>
+
+                <button
+                    type="button"
+                    id="reset-camera-settings-btn"
+                    class="admin-btn secondary-btn">
+                    Reset Form
+                </button>
+            </div>
+
+            <p class="settings-footnote">
+    Test Connection checks the simulator when no camera is
+    configured. When camera details are configured, it tests
+    the RTSP stream.
+</p>
+
+        </form>
+    </section>
+
+</main>
+
+<!-- Camera status popup -->
+<div
+    id="camera-status-modal"
+    class="admin-modal"
+    hidden
+    aria-hidden="true">
+
+    <div
+        class="admin-modal-content"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="camera-status-modal-title">
+
+        <button
+            type="button"
+            class="modal-close-btn"
+            data-close-modal="camera-status-modal"
+            aria-label="Close">
+            &times;
+        </button>
+
+        <h2 id="camera-status-modal-title">Camera Status</h2>
+
+        <div id="camera-status-modal-body">
+            Loading camera status...
+        </div>
+    </div>
+</div>
+
+<!-- System health popup -->
+<div
+    id="system-health-modal"
+    class="admin-modal"
+    hidden
+    aria-hidden="true">
+
+    <div
+        class="admin-modal-content"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="system-health-modal-title">
+
+        <button
+            type="button"
+            class="modal-close-btn"
+            data-close-modal="system-health-modal"
+            aria-label="Close">
+            &times;
+        </button>
+
+        <h2 id="system-health-modal-title">System Health</h2>
+
+        <div id="system-health-modal-body">
+            Loading system health...
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block page_js %}
+<script
+    src="{{ url_for('static', filename='js/admin.js') }}"
+    defer>
+</script>
+
+<script
+    src="{{ url_for('static', filename='js/camera-settings.js') }}"
+    defer>
+</script>
+{% endblock %}
