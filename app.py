@@ -42,7 +42,8 @@ app.config.update(
     SESSION_COOKIE_SECURE=os.getenv(
         "MIREN_HTTPS", "false"
     ).lower() == "true",
-    PERMANENT_SESSION_LIFETIME=timedelta(minutes=30),
+    PERMANENT_SESSION_LIFETIME=timedelta(days=7),
+    WTF_CSRF_TIME_LIMIT=timedelta(days=7),
     MAX_CONTENT_LENGTH=3 * 1024 * 1024,
 )
 
