@@ -8,6 +8,5 @@
   "custom_rtsp_url": "",
   "logo_path": "/static/uploads/store-logo.png",
   "notice_text": "Recording mode",
-  "rtsp_autoconnect": true,
-  "connection_mode": "main"
+  "rtsp_autoconnect": true
 }

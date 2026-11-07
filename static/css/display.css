@@ -104,31 +104,48 @@
 .footer {
     position: absolute;
     z-index: 6;
-    bottom: clamp(18px, 3vh, 60px);
+    bottom: clamp(90px, 12vh, 180px);
     left: 50%;
     transform: translateX(-50%);
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 12px;
-    width: max-content;
-    max-width: calc(100% - 32px);
-    padding: clamp(12px, 1.3vw, 26px) clamp(18px, 2vw, 40px);
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    border-radius: 999px;
-    background: rgba(0, 0, 0, 0.72);
-    color: #fff;
-    font-size: clamp(11px, 1vw, 24px);
-    font-weight: 800;
-    letter-spacing: 0.12em;
+    gap: 20px;
+
+    width: 96%;
+    max-width: none;
+    padding: clamp(20px, 3vw, 45px) 20px;
+
+    border: 1px solid rgba(255, 69, 69, 0.4);
+    border-radius: 12px;
+    background: rgba(20, 0, 0, 0.72);
+
+    color: #ff3838;
+    font-size: clamp(36px, 7vw, 110px);
+    font-weight: 900;
+    letter-spacing: 0.06em;
     text-align: center;
+
+    text-shadow: 0 0 18px rgba(255, 0, 0, 0.7);
+    animation: recordingBlink 2s ease-in-out infinite;
 }
 
 .surveillance-icon {
-    color: #ff4545;
-    font-size: 0.9em;
-    text-shadow: 0 0 12px rgba(255, 69, 69, 0.8);
+    color: #ff3030;
+    font-size: 1em;
+    text-shadow: 0 0 12px rgba(255, 48, 48, 0.9);
 }
+
+@keyframes recordingBlink {
+    0%, 100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.45;
+    }
+}
+
 
 .copyright {
     position: absolute;
@@ -193,10 +210,11 @@
     }
 
     .footer {
-        bottom: 38px;
-        letter-spacing: 0.06em;
-    }
-
+    bottom: 38px;
+    width: 96%;
+    font-size: clamp(24px, 6vw, 42px);
+    letter-spacing: 0.03em;
+}
     .copyright {
         right: 0;
         bottom: 10px;
