@@ -1227,7 +1227,7 @@ def camera_feed():
 
 if __name__ == "__main__":
     # Local development only. Use a production WSGI server for deployment.
-    debug_mode = True
+    debug_mode = False
 
     # Start the manager only in Flask's serving process,
     # not in the debug reloader's parent process.
