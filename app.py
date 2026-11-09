@@ -43,7 +43,7 @@ app.config.update(
         "MIREN_HTTPS", "false"
     ).lower() == "true",
     PERMANENT_SESSION_LIFETIME=timedelta(days=7),
-    WTF_CSRF_TIME_LIMIT=timedelta(days=7),
+    WTF_CSRF_TIME_LIMIT=7 * 24 * 60 * 60,
     MAX_CONTENT_LENGTH=3 * 1024 * 1024,
 )
 
